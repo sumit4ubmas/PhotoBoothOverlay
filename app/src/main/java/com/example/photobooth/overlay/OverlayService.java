@@ -82,7 +82,6 @@ public class OverlayService extends Service {
         cameraIcon.setPadding(8, 8, 4, 8);
         cameraIcon.setVisibility(View.GONE);
 
-        // Single line label — no wrapping
         statusLabel = new TextView(this);
         statusLabel.setText("Open");
         statusLabel.setTextColor(Color.WHITE);
@@ -122,7 +121,6 @@ public class OverlayService extends Service {
                     isDragging  = false;
                     handler.removeCallbacks(autoHideRunnable);
                     return true;
-
                 case MotionEvent.ACTION_MOVE:
                     float moveDx = event.getRawX() - downRawX;
                     float moveDy = event.getRawY() - downRawY;
@@ -140,7 +138,6 @@ public class OverlayService extends Service {
                         windowManager.updateViewLayout(overlayView, layoutParams);
                     }
                     return true;
-
                 case MotionEvent.ACTION_UP:
                     if (!isDragging) {
                         onButtonTapped();
@@ -206,7 +203,6 @@ public class OverlayService extends Service {
 
     private void togglePhotoBooth() {
         if (!photoBoothOpen) {
-            // Launch Photo Booth
             try {
                 Intent launch = getPackageManager()
                         .getLaunchIntentForPackage(PHOTO_BOOTH_PKG);
@@ -221,38 +217,19 @@ public class OverlayService extends Service {
                 }
             } catch (Exception ignored) {
             }
-} else {
+        } else {
+            // Force-stop Photo Booth via shell — most reliable close method
             try {
-                // Force stop Photo Booth process
-                ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-                if (am != null) {
-                    am.killBackgroundProcesses(PHOTO_BOOTH_PKG);
-                }
-                // Also try via shell for reliability
                 Runtime.getRuntime().exec(
-                    new String[]{"am", "force-stop", PHOTO_BOOTH_PKG}
-                );
+                        new String[]{"am", "force-stop", PHOTO_BOOTH_PKG});
             } catch (Exception ignored) {
             }
-            photoBoothOpen = false;
-            statusLabel.setText("Open");
-            applyPillBackground(0xEEe94560);
-        }
-            // This returns user to whatever app was open before,
-            // NOT the home screen.
+            // Also kill via ActivityManager as backup
             try {
                 ActivityManager am =
                         (ActivityManager) getSystemService(ACTIVITY_SERVICE);
                 if (am != null) {
-                    for (ActivityManager.AppTask task : am.getAppTasks()) {
-                        ActivityManager.RecentTaskInfo info = task.getTaskInfo();
-                        if (info.baseActivity != null
-                                && PHOTO_BOOTH_PKG.equals(
-                                        info.baseActivity.getPackageName())) {
-                            task.finishAndRemoveTask();
-                            break;
-                        }
-                    }
+                    am.killBackgroundProcesses(PHOTO_BOOTH_PKG);
                 }
             } catch (Exception ignored) {
             }
