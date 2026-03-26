@@ -221,8 +221,23 @@ public class OverlayService extends Service {
                 }
             } catch (Exception ignored) {
             }
-        } else {
-            // ── Close: finish Photo Booth task cleanly ─────────────────────
+} else {
+            try {
+                // Force stop Photo Booth process
+                ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                if (am != null) {
+                    am.killBackgroundProcesses(PHOTO_BOOTH_PKG);
+                }
+                // Also try via shell for reliability
+                Runtime.getRuntime().exec(
+                    new String[]{"am", "force-stop", PHOTO_BOOTH_PKG}
+                );
+            } catch (Exception ignored) {
+            }
+            photoBoothOpen = false;
+            statusLabel.setText("Open");
+            applyPillBackground(0xEEe94560);
+        }
             // This returns user to whatever app was open before,
             // NOT the home screen.
             try {
