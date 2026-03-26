@@ -1,5 +1,6 @@
 package com.example.photobooth.overlay;
 
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -30,7 +31,7 @@ public class OverlayService extends Service {
     private static final String PHOTO_BOOTH_PKG = "com.example.photobooth";
 
     private static final int PEEK_WIDTH     = 36;
-    private static final int EXPANDED_WIDTH = 140;
+    private static final int EXPANDED_WIDTH = 160;
     private static final int BUTTON_HEIGHT  = 72;
     private static final int AUTO_HIDE_MS   = 4000;
     private static final int DRAG_THRESHOLD = 12;
@@ -50,7 +51,6 @@ public class OverlayService extends Service {
     private final Handler  handler          = new Handler(Looper.getMainLooper());
     private final Runnable autoHideRunnable = this::collapse;
 
-    // Touch tracking
     private float downRawX, downRawY;
     private int   downLayoutX, downLayoutY;
 
@@ -79,15 +79,18 @@ public class OverlayService extends Service {
         cameraIcon = new ImageView(this);
         cameraIcon.setImageResource(android.R.drawable.ic_menu_camera);
         cameraIcon.setColorFilter(Color.WHITE);
-        cameraIcon.setPadding(10, 8, 6, 8);
+        cameraIcon.setPadding(8, 8, 4, 8);
         cameraIcon.setVisibility(View.GONE);
 
+        // Single line label — no wrapping
         statusLabel = new TextView(this);
         statusLabel.setText("Open");
         statusLabel.setTextColor(Color.WHITE);
-        statusLabel.setTextSize(12f);
+        statusLabel.setTextSize(13f);
         statusLabel.setPadding(2, 0, 12, 0);
-        statusLabel.setGravity(Gravity.CENTER);
+        statusLabel.setGravity(Gravity.CENTER_VERTICAL);
+        statusLabel.setMaxLines(1);
+        statusLabel.setSingleLine(true);
         statusLabel.setVisibility(View.GONE);
 
         overlayView.addView(arrowTab);
@@ -106,37 +109,33 @@ public class OverlayService extends Service {
                 PixelFormat.TRANSLUCENT
         );
         layoutParams.gravity = Gravity.TOP | Gravity.START;
-        layoutParams.x = getScreenWidth() - PEEK_WIDTH; // start on right edge
+        layoutParams.x = getScreenWidth() - PEEK_WIDTH;
         layoutParams.y = 220;
 
         overlayView.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
-
                 case MotionEvent.ACTION_DOWN:
                     downRawX    = event.getRawX();
                     downRawY    = event.getRawY();
                     downLayoutX = layoutParams.x;
                     downLayoutY = layoutParams.y;
                     isDragging  = false;
-                    // Pause auto-hide while touching
                     handler.removeCallbacks(autoHideRunnable);
                     return true;
 
                 case MotionEvent.ACTION_MOVE:
                     float moveDx = event.getRawX() - downRawX;
                     float moveDy = event.getRawY() - downRawY;
-                    if (!isDragging &&
-                        (Math.abs(moveDx) > DRAG_THRESHOLD
-                         || Math.abs(moveDy) > DRAG_THRESHOLD)) {
+                    if (!isDragging && (Math.abs(moveDx) > DRAG_THRESHOLD
+                            || Math.abs(moveDy) > DRAG_THRESHOLD)) {
                         isDragging = true;
                     }
                     if (isDragging) {
                         layoutParams.x = downLayoutX + (int) moveDx;
                         layoutParams.y = downLayoutY + (int) moveDy;
-                        // Clamp x so button never fully hides off screen
-                        int maxX = getScreenWidth() - PEEK_WIDTH;
                         if (layoutParams.x < 0) layoutParams.x = 0;
-                        if (layoutParams.x > maxX) layoutParams.x = maxX;
+                        if (layoutParams.x > getScreenWidth() - PEEK_WIDTH)
+                            layoutParams.x = getScreenWidth() - PEEK_WIDTH;
                         if (layoutParams.y < 0) layoutParams.y = 0;
                         windowManager.updateViewLayout(overlayView, layoutParams);
                     }
@@ -144,12 +143,9 @@ public class OverlayService extends Service {
 
                 case MotionEvent.ACTION_UP:
                     if (!isDragging) {
-                        // It was a tap
                         onButtonTapped();
                     } else {
-                        // Finished dragging — snap to nearest edge
                         snapToEdge();
-                        // Resume auto-hide if expanded
                         if (isExpanded) {
                             handler.postDelayed(autoHideRunnable, AUTO_HIDE_MS);
                         }
@@ -162,19 +158,12 @@ public class OverlayService extends Service {
         windowManager.addView(overlayView, layoutParams);
     }
 
-    // ── Snap to nearest left or right edge ────────────────────────────────
-
     private void snapToEdge() {
         int screenWidth = getScreenWidth();
-        int midPoint    = screenWidth / 2;
-        if (layoutParams.x + PEEK_WIDTH / 2 >= midPoint) {
-            // Snap to right edge — only peek shows
+        if (layoutParams.x + EXPANDED_WIDTH / 2 >= screenWidth / 2) {
             layoutParams.x = screenWidth - PEEK_WIDTH;
         } else {
-            // Snap to left edge — only peek shows
             layoutParams.x = 0;
-            // Mirror the arrow direction
-            arrowTab.setText(">");
         }
         windowManager.updateViewLayout(overlayView, layoutParams);
     }
@@ -183,8 +172,6 @@ public class OverlayService extends Service {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         return dm.widthPixels;
     }
-
-    // ── Tap logic ─────────────────────────────────────────────────────────
 
     private void onButtonTapped() {
         if (!isExpanded) {
@@ -217,10 +204,9 @@ public class OverlayService extends Service {
         handler.removeCallbacks(autoHideRunnable);
     }
 
-    // ── Launch / close Photo Booth ─────────────────────────────────────────
-
     private void togglePhotoBooth() {
         if (!photoBoothOpen) {
+            // Launch Photo Booth
             try {
                 Intent launch = getPackageManager()
                         .getLaunchIntentForPackage(PHOTO_BOOTH_PKG);
@@ -236,22 +222,19 @@ public class OverlayService extends Service {
             } catch (Exception ignored) {
             }
         } else {
-            // Move Photo Booth to back, restore previous app
+            // ── Close: finish Photo Booth task cleanly ─────────────────────
+            // This returns user to whatever app was open before,
+            // NOT the home screen.
             try {
-                android.app.ActivityManager am =
-                        (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                ActivityManager am =
+                        (ActivityManager) getSystemService(ACTIVITY_SERVICE);
                 if (am != null) {
-                    for (android.app.ActivityManager.AppTask task : am.getAppTasks()) {
-                        android.content.ComponentName cn =
-                                task.getTaskInfo().baseActivity;
-                        if (cn != null && PHOTO_BOOTH_PKG.equals(cn.getPackageName())) {
-                            task.moveToFront();
-                            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                Intent pressBack = new Intent(Intent.ACTION_MAIN);
-                                pressBack.addCategory(Intent.CATEGORY_HOME);
-                                pressBack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(pressBack);
-                            }, 100);
+                    for (ActivityManager.AppTask task : am.getAppTasks()) {
+                        ActivityManager.RecentTaskInfo info = task.getTaskInfo();
+                        if (info.baseActivity != null
+                                && PHOTO_BOOTH_PKG.equals(
+                                        info.baseActivity.getPackageName())) {
+                            task.finishAndRemoveTask();
                             break;
                         }
                     }
@@ -263,8 +246,6 @@ public class OverlayService extends Service {
             applyPillBackground(0xEEe94560);
         }
     }
-
-    // ── Helpers ────────────────────────────────────────────────────────────
 
     private void applyPillBackground(int color) {
         GradientDrawable pill = new GradientDrawable();
@@ -294,7 +275,7 @@ public class OverlayService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Photo Booth Overlay Active")
-                .setContentText("Drag to move | Tap to expand | Tap again to open/close")
+                .setContentText("Drag to move | Tap to expand | Tap to open/close")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
