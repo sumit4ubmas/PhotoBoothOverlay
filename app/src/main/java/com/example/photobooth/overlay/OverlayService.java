@@ -1,12 +1,10 @@
 package com.example.photobooth.overlay;
 
-import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.os.Build;
@@ -20,8 +18,6 @@ import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
-import java.util.List;
-
 public class OverlayService extends Service {
 
     private static final String CHANNEL_ID      = "overlay_channel";
@@ -31,6 +27,9 @@ public class OverlayService extends Service {
     private WindowManager windowManager;
     private ImageView overlayView;
     private WindowManager.LayoutParams layoutParams;
+
+    // Track whether WE launched Photo Booth
+    private boolean photoBoothOpen = false;
 
     private int   initialX, initialY;
     private float initialTouchX, initialTouchY;
@@ -108,39 +107,35 @@ public class OverlayService extends Service {
     }
 
     private void togglePhotoBooth() {
-        if (isPhotoBoothInForeground()) {
-            // Send to background
+        if (!photoBoothOpen) {
+            // Launch Photo Booth
+            try {
+                Intent launch = getPackageManager().getLaunchIntentForPackage(PHOTO_BOOTH_PKG);
+                if (launch != null) {
+                    launch.addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    );
+                    startActivity(launch);
+                    photoBoothOpen = true;
+                    // Change button color to green = "tap to close"
+                    overlayView.setBackgroundColor(0xCC2ecc71);
+                } else {
+                    Toast.makeText(this, "Photo Booth not found!", Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            // Close Photo Booth — go home
             Intent home = new Intent(Intent.ACTION_MAIN);
             home.addCategory(Intent.CATEGORY_HOME);
             home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(home);
-        } else {
-            // Launch Photo Booth
-            Intent launch = getPackageManager().getLaunchIntentForPackage(PHOTO_BOOTH_PKG);
-            if (launch != null) {
-                launch.addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK |
-                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-                );
-                startActivity(launch);
-            } else {
-                Toast.makeText(this,
-                    "Photo Booth app not found! Is com.example.photobooth installed?",
-                    Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private boolean isPhotoBoothInForeground() {
-        try {
-            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-            List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
-            if (tasks == null || tasks.isEmpty()) return false;
-            return PHOTO_BOOTH_PKG.equals(tasks.get(0).topActivity.getPackageName());
-        } catch (Exception e) {
-            return false;
+            photoBoothOpen = false;
+            // Change button color back to red = "tap to open"
+            overlayView.setBackgroundColor(0xCCe94560);
         }
     }
 
@@ -160,7 +155,7 @@ public class OverlayService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Photo Booth Overlay Active")
-                .setContentText("Tap 📷 button to open/close Photo Booth")
+                .setContentText("Red = open  |  Green = close")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
