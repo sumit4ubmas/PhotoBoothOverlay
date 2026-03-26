@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="#1a1a2e">
+
+    <!-- Camera icon -->
+    <ImageView
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:src="@android:drawable/ic_menu_camera"
+        android:tint="#e94560"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Photo Booth Overlay"
+        android:textColor="#ffffff"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Subtitle -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Always-on-top launcher for your Photo Booth app"
+        android:textColor="#aaaaaa"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Status message -->
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#ffffff"
+        android:textSize="15sp"
+        android:gravity="center"
+        android:padding="16dp"
+        android:background="#2a2a4e"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Grant Permission button -->
+    <Button
+        android:id="@+id/permissionButton"
+        android:layout_width="280dp"
+        android:layout_height="56dp"
+        android:text="GRANT DRAW OVER APPS PERMISSION"
+        android:textColor="#ffffff"
+        android:backgroundTint="#e94560"
+        android:textSize="13sp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Start Overlay button -->
+    <Button
+        android:id="@+id/startButton"
+        android:layout_width="280dp"
+        android:layout_height="56dp"
+        android:text="START OVERLAY"
+        android:textColor="#ffffff"
+        android:backgroundTint="#0f3460"
+        android:textSize="15sp"
+        android:enabled="false" />
+
+    <!-- Instructions -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="After starting, a 📷 button will float on top of all screens.\n• Tap it to launch Photo Booth\n• Tap again to send it to background\n• Drag to reposition"
+        android:textColor="#888888"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:padding="16dp"
+        android:layout_marginTop="24dp" />
+
+</LinearLayout>

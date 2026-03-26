@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PhotoBoothOverlay" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">#e94560</item>
+        <item name="android:colorAccent">#e94560</item>
+        <item name="android:windowBackground">#1a1a2e</item>
+    </style>
+</resources>
