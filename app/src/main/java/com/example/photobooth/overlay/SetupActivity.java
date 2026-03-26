@@ -42,7 +42,10 @@ public class SetupActivity extends Activity {
         startBtn.setOnClickListener(v -> {
             if (Settings.canDrawOverlays(this)) {
                 startOverlayService();
-                Toast.makeText(this, "Photo Booth overlay started!", Toast.LENGTH_SHORT).show();
+                // Guide user to also enable accessibility
+                Toast.makeText(this,
+                    "Overlay started! Also enable Accessibility Service for close button to work.",
+                    Toast.LENGTH_LONG).show();
                 finish();
             } else {
                 Toast.makeText(this, "Please grant Draw Over Apps permission first.", Toast.LENGTH_SHORT).show();
