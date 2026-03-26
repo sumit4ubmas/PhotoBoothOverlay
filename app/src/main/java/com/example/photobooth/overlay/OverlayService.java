@@ -231,3 +231,28 @@ public class OverlayService extends Service {
                 .setContentTitle("Photo Booth Overlay Active")
                 .setContentText("Tap the sliver on the right edge to expand")
                 .setSmallIcon(android.R.drawable.
+                .setSmallIcon(android.R.drawable.ic_menu_camera)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setContentIntent(pi)
+                .build();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacksAndMessages(null);
+        if (overlayView != null) {
+            windowManager.removeView(overlayView);
+            overlayView = null;
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) { return null; }
+}
