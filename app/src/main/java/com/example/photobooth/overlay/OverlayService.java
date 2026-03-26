@@ -218,20 +218,18 @@ public class OverlayService extends Service {
             } catch (Exception ignored) {
             }
         } else {
-            // Force-stop Photo Booth via shell — most reliable close method
-            try {
-                Runtime.getRuntime().exec(
-                        new String[]{"am", "force-stop", PHOTO_BOOTH_PKG});
-            } catch (Exception ignored) {
-            }
-            // Also kill via ActivityManager as backup
-            try {
-                ActivityManager am =
-                        (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-                if (am != null) {
-                    am.killBackgroundProcesses(PHOTO_BOOTH_PKG);
-                }
-            } catch (Exception ignored) {
+            // Use Accessibility Service to press Back — closes Photo Booth
+            // and returns user to previous app
+            OverlayAccessibilityService svc =
+                    OverlayAccessibilityService.getInstance();
+            if (svc != null) {
+                svc.pressBack();
+            } else {
+                // Fallback if accessibility not enabled
+                Intent home = new Intent(Intent.ACTION_MAIN);
+                home.addCategory(Intent.CATEGORY_HOME);
+                home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(home);
             }
             photoBoothOpen = false;
             statusLabel.setText("Open");
