@@ -1,6 +1,5 @@
 package com.example.photobooth.overlay;
 
-import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -30,8 +29,8 @@ public class OverlayService extends Service {
     private static final int    NOTIFICATION_ID = 42;
     private static final String PHOTO_BOOTH_PKG = "com.example.photobooth";
 
-    private static final int PEEK_WIDTH     = 36;
-    private static final int EXPANDED_WIDTH = 160;
+    private static final int PEEK_WIDTH     = 52;   // wide enough for camera icon
+    private static final int EXPANDED_WIDTH = 170;
     private static final int BUTTON_HEIGHT  = 72;
     private static final int AUTO_HIDE_MS   = 4000;
     private static final int DRAG_THRESHOLD = 12;
@@ -44,8 +43,8 @@ public class OverlayService extends Service {
     private boolean photoBoothOpen = false;
     private boolean isDragging     = false;
 
-    private TextView  arrowTab;
-    private ImageView cameraIcon;
+    private ImageView peekIcon;    // camera icon shown when collapsed
+    private ImageView cameraIcon;  // camera icon shown when expanded
     private TextView  statusLabel;
 
     private final Handler  handler          = new Handler(Looper.getMainLooper());
@@ -69,19 +68,22 @@ public class OverlayService extends Service {
         overlayView.setGravity(Gravity.CENTER_VERTICAL);
         applyPillBackground(0xEEe94560);
 
-        arrowTab = new TextView(this);
-        arrowTab.setText("<");
-        arrowTab.setTextColor(Color.WHITE);
-        arrowTab.setTextSize(18f);
-        arrowTab.setPadding(8, 0, 8, 0);
-        arrowTab.setGravity(Gravity.CENTER);
+        // ── Peek icon — camera icon visible when collapsed ─────────────────
+        peekIcon = new ImageView(this);
+        peekIcon.setImageResource(android.R.drawable.ic_menu_camera);
+        peekIcon.setColorFilter(Color.WHITE);
+        peekIcon.setPadding(10, 10, 10, 10);
+        peekIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
+        // ── Expanded camera icon ───────────────────────────────────────────
         cameraIcon = new ImageView(this);
         cameraIcon.setImageResource(android.R.drawable.ic_menu_camera);
         cameraIcon.setColorFilter(Color.WHITE);
-        cameraIcon.setPadding(8, 8, 4, 8);
+        cameraIcon.setPadding(6, 8, 4, 8);
+        cameraIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         cameraIcon.setVisibility(View.GONE);
 
+        // ── Status label ───────────────────────────────────────────────────
         statusLabel = new TextView(this);
         statusLabel.setText("Open");
         statusLabel.setTextColor(Color.WHITE);
@@ -92,7 +94,7 @@ public class OverlayService extends Service {
         statusLabel.setSingleLine(true);
         statusLabel.setVisibility(View.GONE);
 
-        overlayView.addView(arrowTab);
+        overlayView.addView(peekIcon);
         overlayView.addView(cameraIcon);
         overlayView.addView(statusLabel);
 
@@ -182,7 +184,8 @@ public class OverlayService extends Service {
 
     private void expand() {
         isExpanded = true;
-        arrowTab.setText(">");
+        // Hide peek icon, show expanded icons
+        peekIcon.setVisibility(View.GONE);
         cameraIcon.setVisibility(View.VISIBLE);
         statusLabel.setVisibility(View.VISIBLE);
         layoutParams.width = EXPANDED_WIDTH;
@@ -193,7 +196,8 @@ public class OverlayService extends Service {
 
     private void collapse() {
         isExpanded = false;
-        arrowTab.setText("<");
+        // Show peek icon, hide expanded icons
+        peekIcon.setVisibility(View.VISIBLE);
         cameraIcon.setVisibility(View.GONE);
         statusLabel.setVisibility(View.GONE);
         layoutParams.width = PEEK_WIDTH;
@@ -218,14 +222,12 @@ public class OverlayService extends Service {
             } catch (Exception ignored) {
             }
         } else {
-            // Use Accessibility Service to press Back — closes Photo Booth
-            // and returns user to previous app
+            // Use Accessibility Service to press Back
             OverlayAccessibilityService svc =
                     OverlayAccessibilityService.getInstance();
             if (svc != null) {
                 svc.pressBack();
             } else {
-                // Fallback if accessibility not enabled
                 Intent home = new Intent(Intent.ACTION_MAIN);
                 home.addCategory(Intent.CATEGORY_HOME);
                 home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -265,7 +267,7 @@ public class OverlayService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Photo Booth Overlay Active")
-                .setContentText("Drag to move | Tap to expand | Tap to open/close")
+                .setContentText("Tap the camera icon on the edge to expand")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
